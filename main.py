@@ -1,6 +1,6 @@
 import os, random, textwrap
 from gtts import gTTS
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from moviepy.editor import ImageClip, AudioFileClip
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -13,18 +13,56 @@ quotes = [
 "Aaj ka dard kal ki taqat banega, rukna mat.",
 "Sapne wo nahi jo neend me aaye, sapne wo hai jo neend na aane de."
 ]
+
 quote = random.choice(quotes)
+print("Quote:", quote)
+
 tts = gTTS(text=quote, lang='hi', slow=False)
 tts.save("voice.mp3")
-img = Image.new('RGB', (1080, 1920), color=(10,10,20))
+
+img = Image.new('RGB', (1080, 1920), color=(10, 10, 20))
 draw = ImageDraw.Draw(img)
-wrapped = "\n".join(textwrap.wrap(quote, width=22))
-draw.text((100, 800), wrapped, fill=(255, 215, 0))
+
+try:
+    font = ImageFont.truetype("DejaVuSans-Bold.ttf", 60)
+except:
+    font = ImageFont.load_default()
+
+wrapped = "\n".join(textwrap.wrap(quote, width=20))
+draw.text((100, 800), wrapped, fill=(255, 215, 0), font=font)
 img.save("bg.jpg")
+
 audio = AudioFileClip("voice.mp3")
-video = ImageClip("bg.jpg").set_duration(30).set_audio(audio)
+print("Audio duration:", audio.duration)
+
+video = ImageClip("bg.jpg").set_duration(audio.duration).set_audio(audio)
 video.write_videofile("short.mp4", fps=24, codec="libx264", audio_codec="aac")
-creds = Credentials(None, refresh_token=os.environ['YT_REFRESH_TOKEN'], client_id=os.environ['YT_CLIENT_ID'], client_secret=os.environ['YT_CLIENT_SECRET'], token_uri="https://oauth2.googleapis.com/token")
+
+creds = Credentials(
+    None,
+    refresh_token=os.environ['YT_REFRESH_TOKEN'],
+    client_id=os.environ['YT_CLIENT_ID'],
+    client_secret=os.environ['YT_CLIENT_SECRET'],
+    token_uri="https://oauth2.googleapis.com/token",
+    scopes=["https://www.googleapis.com/auth/youtube.upload"]
+)
+
 youtube = build("youtube", "v3", credentials=creds)
-youtube.videos().insert(part="snippet,status", body={"snippet": {"title": quote[:90] + " #shorts #motivation", "description": quote + "\n\n#motivation #shorts #viral", "categoryId": "22"}, "status": {"privacyStatus": "public", "madeForKids": False}}, media_body=MediaFileUpload("short.mp4")).execute()
+
+youtube.videos().insert(
+    part="snippet,status",
+    body={
+        "snippet": {
+            "title": quote[:90] + " #shorts #motivation",
+            "description": quote + "\n\n#motivation #shorts #viral",
+            "categoryId": "22"
+        },
+        "status": {
+            "privacyStatus": "public",
+            "madeForKids": False
+        }
+    },
+    media_body=MediaFileUpload("short.mp4")
+).execute()
+
 print("Upload Ho Gaya!")
